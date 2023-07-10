@@ -26,20 +26,13 @@ resource "aws_db_instance" "default" {
   storage_encrypted   = false
   multi_az            = false
 
-  # Upgrades
   auto_minor_version_upgrade  = true
   allow_major_version_upgrade = false
   apply_immediately           = false
-  maintenance_window          = "Sun:05:00-Sun:06:00"
 
   deletion_protection      = false
   skip_final_snapshot      = true
   delete_automated_backups = true
-
-  # Backup
-  backup_retention_period = 14
-  backup_window           = "08:00-09:00"
-  copy_tags_to_snapshot   = true
 }
 
 resource "aws_iam_role" "eventbridge" {
