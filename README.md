@@ -1,6 +1,6 @@
 # AWS EventBridge Scheduler
 
-Stopping and starting an RDS instance on schedule using Event Bridge scheduler.
+Create an RDS PostgreSQL instance to test EventBridge scheduler with stop/start RDS actions.
 
 Create the `.auto.tfars` file. Edit as needed.
 
