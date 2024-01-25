@@ -65,15 +65,7 @@ resource "aws_iam_role" "emaccess" {
         "Principal" : {
           "Service" : "monitoring.rds.amazonaws.com"
         },
-        "Action" : "sts:AssumeRole",
-        "Condition" : {
-          "StringLike" : {
-            "aws:SourceArn" : "arn:aws:rds:${var.aws_region}:${local.aws_account_id}:db:${local.db_name}"
-          },
-          "StringEquals" : {
-            "aws:SourceAccount" : "${local.aws_account_id}"
-          }
-        }
+        "Action" : "sts:AssumeRole"
       }
     ]
   })
