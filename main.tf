@@ -2,7 +2,7 @@ terraform {
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = "5.7.0"
+      version = "5.33.0"
     }
   }
 }
@@ -11,16 +11,23 @@ provider "aws" {
   region = var.aws_region
 }
 
+data "aws_caller_identity" "current" {}
+
+locals {
+  aws_account_id = data.aws_caller_identity.current.account_id
+  db_name        = "testdb"
+}
+
 resource "aws_db_instance" "default" {
   identifier     = "database-1"
-  db_name        = "testdb"
+  db_name        = local.db_name
   engine         = "postgres"
-  engine_version = "15.3"
+  engine_version = "16.1"
   username       = "dbadmin"
   password       = "DF1238DCVc#R53"
 
   publicly_accessible = false
-  instance_class      = "db.t4g.micro"
+  instance_class      = "db.t4g.medium"
   allocated_storage   = "30"
   storage_type        = "gp3"
   storage_encrypted   = false
@@ -33,8 +40,52 @@ resource "aws_db_instance" "default" {
   deletion_protection      = false
   skip_final_snapshot      = true
   delete_automated_backups = true
+
+  performance_insights_enabled          = true
+  performance_insights_retention_period = 7 # Free
+  monitoring_interval                   = 60
+  monitoring_role_arn                   = aws_iam_role.emaccess.arn
+  enabled_cloudwatch_logs_exports       = ["postgresql", "upgrade"]
+
+  depends_on = [aws_iam_role_policy_attachment.AmazonRDSEnhancedMonitoringRole]
 }
 
+# Enhanced Monitoring
+resource "aws_iam_role" "emaccess" {
+  name = "emaccess"
+
+  # Implements protection for the confused deputy problem
+  # https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_Monitoring.OS.Enabling.html#USER_Monitoring.OS.confused-deputy
+  assume_role_policy = jsonencode({
+    "Version" : "2012-10-17",
+    "Statement" : [
+      {
+        "Sid" : "",
+        "Effect" : "Allow",
+        "Principal" : {
+          "Service" : "monitoring.rds.amazonaws.com"
+        },
+        "Action" : "sts:AssumeRole",
+        "Condition" : {
+          "StringLike" : {
+            "aws:SourceArn" : "arn:aws:rds:${var.aws_region}:${local.aws_account_id}:db:${local.db_name}"
+          },
+          "StringEquals" : {
+            "aws:SourceAccount" : "${local.aws_account_id}"
+          }
+        }
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "AmazonRDSEnhancedMonitoringRole" {
+  role       = aws_iam_role.emaccess.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonRDSEnhancedMonitoringRole"
+}
+
+
+### EventBridge ###
 resource "aws_iam_role" "eventbridge" {
   name = "CustomEventBridgeSchedulerForRDS"
 
